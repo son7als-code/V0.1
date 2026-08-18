@@ -5,7 +5,7 @@ from pathlib import Path
 
 from app.core.character import CharacterManager
 from app.core.scene import SceneManager
-from app.core.validator import validate_story
+from app.core.validator import ValidationError, validate_story
 from app.providers.base import BaseAIProvider
 from app.storage.project import ProjectStore
 
@@ -30,9 +30,13 @@ class StoryCore:
     def retry_scene(self, project_path: Path, request: dict, scene_id: str) -> dict:
         self.project_store.log(project_path, "retry", f"Retry requested for {scene_id}")
         loaded = self.project_store.load_project(project_path)
+        existing_scene = next((scene for scene in loaded["scenes"] if scene["id"] == scene_id), None)
+        if existing_scene is None:
+            raise ValidationError(f"Cannot retry missing scene: {scene_id}")
         character_manager = CharacterManager(loaded["characters"])
         raw_scene = self.provider.generate_scene(request, scene_id)
-        replacement = self.scene_manager.normalize_scene(raw_scene, int(raw_scene.get("order", 1)), character_manager, request["visual_style"])
+        raw_scene = {**raw_scene, "id": existing_scene["id"], "order": existing_scene["order"]}
+        replacement = self.scene_manager.normalize_scene(raw_scene, int(existing_scene["order"]), character_manager, request["visual_style"])
         scenes = self.scene_manager.replace_scene(loaded["scenes"], replacement)
         self.project_store.save_outputs(project_path, loaded["story"], loaded["characters"], scenes)
         self.project_store.log(project_path, "generation success", f"Retry succeeded for {scene_id}")

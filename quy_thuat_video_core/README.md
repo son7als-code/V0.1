@@ -19,47 +19,56 @@ No Docker, Electron, CUDA, PyTorch, TensorFlow, Stable Diffusion, local LLMs, lo
 
 ## Install
 
-Python 3.11+ is recommended.
+Python 3.11+ is recommended. Runtime uses only the Python standard library; `pytest` is only needed for tests.
 
-```bash
-python -m venv .venv
-# Windows: .venv\Scripts\activate
-# macOS/Linux:
-. .venv/bin/activate
-pip install -r requirements.txt
+### Windows PowerShell
+
+```powershell
+cd quy_thuat_video_core
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 ```
 
-`pytest` is only needed for tests. Runtime uses the Python standard library.
+### Windows CMD
+
+```bat
+cd quy_thuat_video_core
+py -3.11 -m venv .venv
+.venv\Scripts\activate.bat
+python -m pip install -r requirements.txt
+```
+
+### macOS/Linux
+
+```bash
+cd quy_thuat_video_core
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+```
 
 ## Mock mode
 
 Mock mode requires no API key and creates deterministic dummy project data:
 
-```bash
+```powershell
 cd quy_thuat_video_core
 python -m app.main --mock
 ```
 
 Optional inputs:
 
-```bash
+```powershell
 cd quy_thuat_video_core
-python -m app.main --mock \
-  --project-name "Long Thanh Thuc Tinh" \
-  --story-title "Long Thanh Thức Tỉnh" \
-  --story-topic "A weak young cultivator awakens the bloodline of an ancient dragon." \
-  --language Vietnamese \
-  --target-duration "5 minutes" \
-  --genre "Xianxia / cultivation" \
-  --visual-style "Cinematic Chinese fantasy" \
-  --number-of-scenes 20
+python -m app.main --mock --project-name "Long Thanh Thuc Tinh" --story-title "Long Thanh Thức Tỉnh" --story-topic "A weak young cultivator awakens the bloodline of an ancient dragon." --language Vietnamese --target-duration "5 minutes" --genre "Xianxia / cultivation" --visual-style "Cinematic Chinese fantasy" --number-of-scenes 20
 ```
 
 ## Retry one failed scene
 
 Retries replace only the requested scene and keep the existing project, characters, and other scenes:
 
-```bash
+```powershell
 cd quy_thuat_video_core
 python -m app.main --mock --project-dir projects/long_thanh_thuc_tinh --retry-scene scene_005
 ```

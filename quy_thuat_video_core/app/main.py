@@ -5,7 +5,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from app.config import AppConfig
+from app.config import AppConfig, ConfigError
 from app.core.story import StoryCore
 from app.core.validator import ValidationError
 from app.providers.base import ProviderError
@@ -46,12 +46,13 @@ def request_from_args(args: argparse.Namespace) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    config = AppConfig.from_env()
-    provider = MockProvider() if args.mock else ExternalProvider(config.ai_api_key, config.ai_base_url, config.ai_model, config.timeout_seconds)
-    store = ProjectStore(config.projects_dir)
-    core = StoryCore(provider, store)
-    request = request_from_args(args)
+    config: AppConfig | None = None
     try:
+        config = AppConfig.from_env()
+        provider = MockProvider() if args.mock else ExternalProvider(config.ai_api_key, config.ai_base_url, config.ai_model, config.timeout_seconds)
+        store = ProjectStore(config.projects_dir)
+        core = StoryCore(provider, store)
+        request = request_from_args(args)
         if args.retry_scene:
             if not args.project_dir:
                 raise ValidationError("--project-dir is required when --retry-scene is used")
@@ -62,8 +63,8 @@ def main(argv: list[str] | None = None) -> int:
             core.generate_project_story(project_path, request)
             print(f"Project created: {project_path}")
         return 0
-    except (ProviderError, StorageError, ValidationError, OSError) as exc:
-        if config.debug:
+    except (ConfigError, ProviderError, StorageError, ValidationError, OSError) as exc:
+        if config and config.debug:
             raise
         print(f"Error: {exc}", file=sys.stderr)
         return 1

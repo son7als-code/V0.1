@@ -106,3 +106,87 @@ def test_retry_rejects_missing_scene(tmp_path):
     core.generate_project_story(path, request(1))
     with pytest.raises(ValidationError, match="Cannot retry missing scene"):
         core.retry_scene(path, request(1), "scene_999")
+
+
+def test_main_mock_creates_project_without_api_key(tmp_path, monkeypatch):
+    from app import main as cli
+
+    monkeypatch.delenv("AI_API_KEY", raising=False)
+    monkeypatch.delenv("AI_BASE_URL", raising=False)
+    monkeypatch.setenv("PROJECTS_DIR", str(tmp_path))
+    code = cli.main(["--mock", "--project-name", "Mock CLI Project", "--number-of-scenes", "1"])
+    assert code == 0
+    assert (tmp_path / "mock_cli_project" / "project.json").exists()
+
+
+def test_main_missing_api_key_returns_error_without_traceback(monkeypatch, capsys):
+    from app import main as cli
+
+    monkeypatch.delenv("AI_API_KEY", raising=False)
+    monkeypatch.delenv("AI_BASE_URL", raising=False)
+    monkeypatch.delenv("DEBUG", raising=False)
+    code = cli.main([])
+    captured = capsys.readouterr()
+    assert code == 1
+    assert "Error: Missing AI_API_KEY" in captured.err
+    assert "Traceback" not in captured.err
+
+
+def test_invalid_timeout_config_returns_error_without_traceback(monkeypatch, capsys):
+    from app import main as cli
+
+    monkeypatch.setenv("AI_TIMEOUT_SECONDS", "not-an-int")
+    code = cli.main(["--mock"])
+    captured = capsys.readouterr()
+    assert code == 1
+    assert "Error: AI_TIMEOUT_SECONDS must be a positive integer." in captured.err
+    assert "Traceback" not in captured.err
+
+
+def test_retry_preserves_existing_scene_id_and_order(tmp_path):
+    class WrongOrderProvider(MockProvider):
+        def generate_scene(self, request: dict, scene_id: str) -> dict:
+            scene = super().generate_scene(request, scene_id)
+            scene["id"] = "scene_999"
+            scene["order"] = 999
+            return scene
+
+    store = ProjectStore(tmp_path)
+    path = store.create_project(request(3))
+    core = StoryCore(WrongOrderProvider(), store)
+    core.generate_project_story(path, request(3))
+    replacement = core.retry_scene(path, request(3), "scene_002")
+    scenes = store.load_project(path)["scenes"]
+    assert replacement["id"] == "scene_002"
+    assert replacement["order"] == 2
+    assert [scene["id"] for scene in scenes] == ["scene_001", "scene_002", "scene_003"]
+    assert [scene["order"] for scene in scenes] == [1, 2, 3]
+
+
+def test_retry_preserves_story_characters_metadata_and_other_scenes(tmp_path):
+    store = ProjectStore(tmp_path)
+    path = store.create_project(request(3))
+    core = StoryCore(MockProvider(), store)
+    core.generate_project_story(path, request(3))
+    before = store.load_project(path)
+    core.retry_scene(path, request(3), "scene_002")
+    after = store.load_project(path)
+    assert after["project"] == before["project"]
+    assert after["story"] == before["story"]
+    assert after["characters"] == before["characters"]
+    assert after["scenes"][0] == before["scenes"][0]
+    assert after["scenes"][1] != before["scenes"][1]
+    assert after["scenes"][2] == before["scenes"][2]
+
+
+def test_mock_mode_does_not_call_network(tmp_path, monkeypatch):
+    from app import main as cli
+
+    def fail_urlopen(*args, **kwargs):
+        raise AssertionError("network should not be called in mock mode")
+
+    monkeypatch.setattr("urllib.request.urlopen", fail_urlopen)
+    monkeypatch.delenv("AI_API_KEY", raising=False)
+    monkeypatch.delenv("AI_BASE_URL", raising=False)
+    monkeypatch.setenv("PROJECTS_DIR", str(tmp_path))
+    assert cli.main(["--mock", "--project-name", "Offline Mock", "--number-of-scenes", "1"]) == 0
