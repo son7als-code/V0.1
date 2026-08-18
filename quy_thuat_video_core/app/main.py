@@ -31,11 +31,19 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def select_provider(args: argparse.Namespace, config: AppConfig) -> MockProvider | ExternalProvider:
+    """Select the configured provider; called inside main's try/except only."""
+    if args.mock:
+        return MockProvider()
+    return ExternalProvider(config.ai_api_key, config.ai_base_url, config.ai_model, config.timeout_seconds)
+
+
 def build_runtime(args: argparse.Namespace, config: AppConfig) -> tuple[ProjectStore, StoryCore]:
-    """Create runtime objects after configuration is loaded so CLI can catch setup errors."""
-    provider = MockProvider() if args.mock else ExternalProvider(config.ai_api_key, config.ai_base_url, config.ai_model, config.timeout_seconds)
+    """Create runtime objects inside handled CLI setup so setup errors are readable."""
+    provider = select_provider(args, config)
     store = ProjectStore(config.projects_dir)
-    return store, StoryCore(provider, store)
+    core = StoryCore(provider, store)
+    return store, core
 
 
 def request_from_args(args: argparse.Namespace) -> dict:

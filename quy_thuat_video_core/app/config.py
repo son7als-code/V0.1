@@ -10,6 +10,18 @@ class ConfigError(RuntimeError):
     """Raised when environment configuration is invalid."""
 
 
+def parse_positive_int_env(name: str, default: int) -> int:
+    """Read a positive integer environment variable with a user-readable error."""
+    raw_value = os.getenv(name, str(default))
+    try:
+        value = int(raw_value)
+    except ValueError as exc:
+        raise ConfigError(f"{name} must be a positive integer.") from exc
+    if value <= 0:
+        raise ConfigError(f"{name} must be a positive integer.")
+    return value
+
+
 @dataclass(frozen=True)
 class AppConfig:
     projects_dir: Path = Path("projects")
@@ -21,13 +33,7 @@ class AppConfig:
 
     @classmethod
     def from_env(cls) -> "AppConfig":
-        timeout_raw = os.getenv("AI_TIMEOUT_SECONDS", "30")
-        try:
-            timeout_seconds = int(timeout_raw)
-        except ValueError as exc:
-            raise ConfigError("AI_TIMEOUT_SECONDS must be a positive integer.") from exc
-        if timeout_seconds <= 0:
-            raise ConfigError("AI_TIMEOUT_SECONDS must be a positive integer.")
+        timeout_seconds = parse_positive_int_env("AI_TIMEOUT_SECONDS", 30)
         return cls(
             projects_dir=Path(os.getenv("PROJECTS_DIR", "projects")),
             ai_api_key=os.getenv("AI_API_KEY") or None,

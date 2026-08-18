@@ -50,14 +50,21 @@ python -m pip install -r requirements.txt
 
 ## Mock mode
 
-Mock mode requires no API key and creates deterministic dummy project data:
+Mock mode requires no API key and creates deterministic dummy project data. PowerShell:
 
 ```powershell
 cd quy_thuat_video_core
 python -m app.main --mock
 ```
 
-Optional inputs:
+CMD:
+
+```bat
+cd quy_thuat_video_core
+python -m app.main --mock
+```
+
+Optional inputs are shown as a single Windows-friendly command:
 
 ```powershell
 cd quy_thuat_video_core
