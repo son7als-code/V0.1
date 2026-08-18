@@ -143,6 +143,19 @@ def test_invalid_timeout_config_returns_error_without_traceback(monkeypatch, cap
     assert "Traceback" not in captured.err
 
 
+def test_main_missing_base_url_returns_error_without_traceback(monkeypatch, capsys):
+    from app import main as cli
+
+    monkeypatch.setenv("AI_API_KEY", "test-key")
+    monkeypatch.delenv("AI_BASE_URL", raising=False)
+    monkeypatch.delenv("DEBUG", raising=False)
+    code = cli.main([])
+    captured = capsys.readouterr()
+    assert code == 1
+    assert "Error: Missing AI_BASE_URL" in captured.err
+    assert "Traceback" not in captured.err
+
+
 def test_retry_preserves_existing_scene_id_and_order(tmp_path):
     class WrongOrderProvider(MockProvider):
         def generate_scene(self, request: dict, scene_id: str) -> dict:

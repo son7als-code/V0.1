@@ -31,6 +31,13 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def build_runtime(args: argparse.Namespace, config: AppConfig) -> tuple[ProjectStore, StoryCore]:
+    """Create runtime objects after configuration is loaded so CLI can catch setup errors."""
+    provider = MockProvider() if args.mock else ExternalProvider(config.ai_api_key, config.ai_base_url, config.ai_model, config.timeout_seconds)
+    store = ProjectStore(config.projects_dir)
+    return store, StoryCore(provider, store)
+
+
 def request_from_args(args: argparse.Namespace) -> dict:
     return {
         "project_name": args.project_name,
@@ -49,9 +56,7 @@ def main(argv: list[str] | None = None) -> int:
     config: AppConfig | None = None
     try:
         config = AppConfig.from_env()
-        provider = MockProvider() if args.mock else ExternalProvider(config.ai_api_key, config.ai_base_url, config.ai_model, config.timeout_seconds)
-        store = ProjectStore(config.projects_dir)
-        core = StoryCore(provider, store)
+        store, core = build_runtime(args, config)
         request = request_from_args(args)
         if args.retry_scene:
             if not args.project_dir:
