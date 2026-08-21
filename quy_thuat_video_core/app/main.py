@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from app.config import AppConfig, ConfigError
+from app.core.machine import MachineKeyError, verify_machine_key
 from app.core.story import StoryCore
 from app.core.validator import ValidationError
 from app.providers.base import ProviderError
@@ -28,6 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--number-of-scenes", type=int, default=3)
     parser.add_argument("--retry-scene", help="Retry one scene ID for an existing project")
     parser.add_argument("--project-dir", help="Existing project directory for retry")
+    parser.add_argument("--show-machine-key", action="store_true", help="Print this PC's V0.1 machine key")
     return parser
 
 
@@ -64,6 +66,15 @@ def main(argv: list[str] | None = None) -> int:
     config: AppConfig | None = None
     try:
         config = AppConfig.from_env()
+        if args.show_machine_key:
+            from app.core.machine import get_machine_key
+            print(get_machine_key())
+            return 0
+        if config.require_machine_key:
+            if not config.machine_key:
+                raise ConfigError("V01_MACHINE_KEY is required when V01_REQUIRE_MACHINE_KEY is enabled.")
+            if not verify_machine_key(config.machine_key):
+                raise ConfigError("Machine key does not match this computer.")
         store, core = build_runtime(args, config)
         request = request_from_args(args)
         if args.retry_scene:
@@ -76,7 +87,7 @@ def main(argv: list[str] | None = None) -> int:
             core.generate_project_story(project_path, request)
             print(f"Project created: {project_path}")
         return 0
-    except (ConfigError, ProviderError, StorageError, ValidationError, OSError) as exc:
+    except (ConfigError, MachineKeyError, ProviderError, StorageError, ValidationError, OSError) as exc:
         if config and config.debug:
             raise
         print(f"Error: {exc}", file=sys.stderr)
