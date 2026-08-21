@@ -30,6 +30,8 @@ class AppConfig:
     ai_base_url: str | None = None
     timeout_seconds: int = 30
     debug: bool = False
+    machine_key: str | None = None
+    require_machine_key: bool = False
 
     @classmethod
     def from_env(cls) -> "AppConfig":
@@ -41,4 +43,6 @@ class AppConfig:
             ai_base_url=os.getenv("AI_BASE_URL") or None,
             timeout_seconds=timeout_seconds,
             debug=os.getenv("DEBUG", "").lower() in {"1", "true", "yes"},
+            machine_key=os.getenv("V01_MACHINE_KEY") or None,
+            require_machine_key=os.getenv("V01_REQUIRE_MACHINE_KEY", "").lower() in {"1", "true", "yes"},
         )
