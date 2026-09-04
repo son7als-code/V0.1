@@ -1,1 +1,8 @@
 pytest>=8.0
+PySide6>=6.7
+opencv-python>=4.10
+paddleocr>=2.9
+paddlepaddle>=3.0
+Pillow>=10.0
+deep-translator>=1.11
+edge-tts>=7.0
